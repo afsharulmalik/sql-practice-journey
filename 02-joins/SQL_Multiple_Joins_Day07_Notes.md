@@ -1,19 +1,18 @@
-# SQL Notes — Multiple JOINs (PostgreSQL)
 
-## 1. What Are Multiple JOINs?
+# SQL Multiple JOINs — Practice Questions with Solutions
 
-**Multiple JOINs** means joining three or more tables in one SQL query. This is useful when the information needed for a result is stored across related tables.
+**Folder:** `02-joins`  
+**File:** `SQL_Multiple_Joins_Day07_Notes.md`
 
-Example:
-- `customers` stores customer details.
-- `orders` stores orders placed by customers.
-- `products` stores product details.
+## Sample Schema
 
-To show a customer's name and the product they ordered, join all three tables.
+- `customers(customer_id, name)`
+- `orders(order_id, customer_id, product_id, amount)`
+- `products(product_id, product_name)`
 
-## 2. Example Tables
+### Sample Data
 
-### `customers`
+**customers**
 
 | customer_id | name |
 |---:|---|
@@ -21,7 +20,7 @@ To show a customer's name and the product they ordered, join all three tables.
 | 2 | Aman |
 | 3 | Priya |
 
-### `orders`
+**orders**
 
 | order_id | customer_id | product_id | amount |
 |---:|---:|---:|---:|
@@ -29,7 +28,7 @@ To show a customer's name and the product they ordered, join all three tables.
 | 102 | 2 | 202 | 20000 |
 | 103 | 1 | 203 | 1500 |
 
-### `products`
+**products**
 
 | product_id | product_name |
 |---:|---|
@@ -38,15 +37,44 @@ To show a customer's name and the product they ordered, join all three tables.
 | 203 | Keyboard |
 | 204 | Mouse |
 
-`orders.product_id` links an order to a product. `orders.customer_id` links an order to a customer. Product 204 has no order, which is useful for understanding `LEFT JOIN`.
-
-> The `amount` column is included for the aggregate examples later in these notes.
+Note: `amount` column is assumed for SUM, AVG and amount-filter questions.
 
 ---
 
-## 3. Basic Multiple JOIN — Three Tables
+## Q1. Display Customer Names and Order IDs
 
-**Question:** Show each customer's name, order ID, and product name.
+```sql
+SELECT
+    c.name AS customer_name,
+    o.order_id
+FROM customers AS c
+INNER JOIN orders AS o
+    ON c.customer_id = o.customer_id;
+```
+
+**Logic:** `INNER JOIN` returns customers who have matching orders. The `ON` condition matches records using `customer_id`.
+
+## Q2. Display Customer Names and Product Names
+
+```sql
+SELECT
+    c.name AS customer_name,
+    p.product_name
+FROM customers AS c
+INNER JOIN orders AS o
+    ON c.customer_id = o.customer_id
+INNER JOIN products AS p
+    ON o.product_id = p.product_id;
+```
+
+**Logic:**
+1. Join customers with orders.
+2. Join orders with products.
+3. Select the customer name and product name.
+
+Each JOIN needs its own correct `ON` condition.
+
+## Q3. Display Customer, Order ID and Product Name
 
 ```sql
 SELECT
@@ -60,27 +88,9 @@ INNER JOIN products AS p
     ON o.product_id = p.product_id;
 ```
 
-### Logic
-1. Start with `customers`.
-2. Join `orders` where customer IDs match.
-3. Join `products` where product IDs match.
-4. Return the requested columns.
+**Logic:** This is the standard three-table JOIN. It connects customer → order → product.
 
-**Expected result with the sample data:**
-
-| customer_name | order_id | product_name |
-|---|---:|---|
-| Rahul | 101 | Laptop |
-| Aman | 102 | Mobile |
-| Rahul | 103 | Keyboard |
-
-`INNER JOIN` returns only rows with matches in the joined tables.
-
----
-
-## 4. Multiple JOIN with `WHERE`
-
-**Question:** Show Rahul's orders and the products associated with those orders.
+## Q4. Show Only Rahul's Orders and Products
 
 ```sql
 SELECT
@@ -95,16 +105,9 @@ INNER JOIN products AS p
 WHERE c.name = 'Rahul';
 ```
 
-### Logic
-- The JOINs connect customer, order, and product rows.
-- `WHERE c.name = 'Rahul'` filters the joined rows to Rahul.
-- `WHERE` filters rows before grouping/aggregation.
+**Logic:** JOINs connect the tables. `WHERE` filters the resulting rows to Rahul.
 
----
-
-## 5. Multiple JOIN with `ORDER BY`
-
-**Question:** Show customers and their products, ordered by customer name alphabetically.
+## Q5. Sort Joined Results by Customer Name
 
 ```sql
 SELECT
@@ -119,16 +122,9 @@ INNER JOIN products AS p
 ORDER BY c.name ASC, o.order_id ASC;
 ```
 
-### Logic
-- `ORDER BY c.name ASC` sorts customer names A to Z.
-- `o.order_id ASC` is a secondary sort for rows with the same customer name.
-- `ASC` means ascending; `DESC` means descending.
+**Logic:** `ORDER BY c.name ASC` sorts names alphabetically. `o.order_id ASC` sorts orders within the same customer.
 
----
-
-## 6. Multiple JOIN with `COUNT()` and `GROUP BY`
-
-**Question:** Count each customer's orders.
+## Q6. Count Orders for Each Customer
 
 ```sql
 SELECT
@@ -140,18 +136,12 @@ INNER JOIN orders AS o
 GROUP BY c.customer_id, c.name;
 ```
 
-### Logic
-- `COUNT(o.order_id)` counts each customer's matching orders.
-- `GROUP BY c.customer_id, c.name` creates one group per customer.
-- Because this uses `INNER JOIN`, customers with no orders do not appear.
+**Logic:**
+- `COUNT(o.order_id)` counts matching order IDs.
+- `GROUP BY` calculates a separate count for each customer.
+- `INNER JOIN` excludes customers without orders.
 
-**PostgreSQL tip:** Group by the non-aggregated selected columns. Including the primary key and name, as shown here, is explicit and clear.
-
----
-
-## 7. Multiple JOIN with `HAVING`
-
-**Question:** Show customers who have placed at least two orders.
+## Q7. Show Customers With at Least Two Orders
 
 ```sql
 SELECT
@@ -164,21 +154,9 @@ GROUP BY c.customer_id, c.name
 HAVING COUNT(o.order_id) >= 2;
 ```
 
-### Logic
-1. JOIN customers to orders.
-2. Group the rows by customer.
-3. Count each group's orders.
-4. `HAVING` keeps only groups with a count of at least two.
+**Logic:** `HAVING` filters grouped results after calculating `COUNT()`. Use `HAVING`, not `WHERE`, for aggregate conditions.
 
-**Remember:** `WHERE` filters individual rows; `HAVING` filters groups after aggregation.
-
-If the output needs only customer names and order counts, joining `products` is unnecessary. Add a product JOIN only when product data is needed or the query specifically requires practicing multiple joins.
-
----
-
-## 8. `LEFT JOIN` — Include Customers With No Orders
-
-**Question:** Display all customers and their order counts, including customers who have no orders.
+## Q8. Count Orders for Every Customer, Including Zero Orders
 
 ```sql
 SELECT
@@ -187,21 +165,15 @@ SELECT
 FROM customers AS c
 LEFT JOIN orders AS o
     ON c.customer_id = o.customer_id
-GROUP BY c.customer_id, c.name
-ORDER BY total_orders DESC, c.name ASC;
+GROUP BY c.customer_id, c.name;
 ```
 
-### Logic
-- `LEFT JOIN` preserves every row from `customers`.
-- For customers with no matching order, order columns are `NULL`.
-- `COUNT(o.order_id)` ignores `NULL`, so the count is `0`.
-- `COUNT(*)` would count the preserved unmatched customer row as 1, so it is not the right expression for this task.
+**Logic:**
+- `LEFT JOIN` keeps every customer.
+- `COUNT(o.order_id)` ignores NULL order IDs.
+- Customers without orders get a count of `0`.
 
----
-
-## 9. Find Customers With No Orders
-
-**Question:** Display only customers who have never placed an order.
+## Q9. Find Customers Who Have Never Placed an Order
 
 ```sql
 SELECT
@@ -212,18 +184,9 @@ LEFT JOIN orders AS o
 WHERE o.order_id IS NULL;
 ```
 
-### Logic
-- The `LEFT JOIN` preserves customers without matches.
-- For a customer with no order, `o.order_id` is `NULL`.
-- `WHERE o.order_id IS NULL` filters the result to those customers.
+**Logic:** A customer with no matching order has `NULL` in `o.order_id`. `IS NULL` filters those customers. No `GROUP BY` is needed.
 
-No `GROUP BY` is needed because this query does not aggregate.
-
----
-
-## 10. Count Products Ordered by Each Customer — Include All Customers
-
-**Question:** Show every customer and the number of product-linked orders associated with them, including customers with no orders.
+## Q10. Count Products Per Customer, Including All Customers
 
 ```sql
 SELECT
@@ -237,20 +200,15 @@ LEFT JOIN products AS p
 GROUP BY c.customer_id, c.name;
 ```
 
-### Logic
-- Start from `customers` because every customer must be included.
-- The first `LEFT JOIN` finds each customer's orders.
-- The second `LEFT JOIN` matches each order to a product.
-- `COUNT(p.product_id)` counts non-`NULL` matched products.
-- Both joins are `LEFT JOIN`, so customers without orders remain in the result.
+**Logic:**
+1. Start from `customers` because all customers must be included.
+2. Join orders.
+3. Join products.
+4. Count matching product IDs.
 
-**Important distinction:** This query counts joined order-product rows, not necessarily distinct product types. If the task asks for unique product types, use `COUNT(DISTINCT p.product_id)`.
+**Important:** This counts product-linked order rows. For distinct product types, use `COUNT(DISTINCT p.product_id)`.
 
----
-
-## 11. Count Orders Per Product — Include Products With No Orders
-
-**Question:** Display every product and its order count, including products never ordered.
+## Q11. Count Orders Per Product, Including Products With No Orders
 
 ```sql
 SELECT
@@ -260,21 +218,32 @@ FROM products AS p
 LEFT JOIN orders AS o
     ON p.product_id = o.product_id
 GROUP BY p.product_id, p.product_name
-ORDER BY total_orders DESC, p.product_name ASC;
+ORDER BY total_orders DESC;
 ```
 
-### Logic
-- Start with `products`, since every product must appear.
-- `LEFT JOIN` finds matching orders but keeps products without orders.
-- `COUNT(o.order_id)` returns 0 for a product with no matching order.
-- `GROUP BY` calculates one count per product.
-- `ORDER BY` sorts from most ordered to least ordered.
+**Logic:**
+- Start from `products` so every product appears.
+- `LEFT JOIN` keeps products without orders.
+- `COUNT(o.order_id)` returns `0` for products with no orders.
+- `ORDER BY ... DESC` sorts from most orders to fewest.
 
----
+## Q12. Count Product-Linked Rows for Each Customer
 
-## 12. `SUM()` — Total Order Amount Per Customer
+```sql
+SELECT
+    c.name AS customer_name,
+    COUNT(p.product_id) AS total_products
+FROM customers AS c
+LEFT JOIN orders AS o
+    ON c.customer_id = o.customer_id
+LEFT JOIN products AS p
+    ON o.product_id = p.product_id
+GROUP BY c.customer_id, c.name;
+```
 
-**Question:** Show every customer and their total order amount; display 0 if there are no orders.
+**Logic:** Both joins are `LEFT JOIN`, so customers without orders remain. `COUNT(p.product_id)` counts non-NULL product IDs.
+
+## Q13. Total Order Amount Per Customer
 
 ```sql
 SELECT
@@ -286,17 +255,12 @@ LEFT JOIN orders AS o
 GROUP BY c.customer_id, c.name;
 ```
 
-### Logic
-- `SUM(o.amount)` adds each customer's order amounts.
-- For a customer with no matching orders, `SUM()` returns `NULL`.
-- `COALESCE(..., 0)` displays 0 instead of `NULL`.
-- `LEFT JOIN` preserves customers with no orders.
+**Logic:**
+- `SUM(o.amount)` adds order amounts per customer.
+- When there are no matching values, `SUM()` returns `NULL`.
+- `COALESCE(..., 0)` displays zero instead of NULL.
 
----
-
-## 13. `AVG()` — Average Order Amount Per Customer
-
-**Question:** Show every customer and their average order amount; display 0 if there are no orders.
+## Q14. Average Order Amount Per Customer
 
 ```sql
 SELECT
@@ -308,21 +272,17 @@ LEFT JOIN orders AS o
 GROUP BY c.customer_id, c.name;
 ```
 
-### Logic
-- `AVG(o.amount)` calculates the average of non-`NULL` order amounts.
-- `COALESCE(..., 0)` changes a `NULL` average to 0.
-- A descriptive alias like `average_order_amount` makes the output clear.
+**Logic:**
+- `AVG(o.amount)` calculates the average of non-NULL amounts.
+- `COALESCE()` displays `0` if there is no average to calculate.
+- `average_order_amount` is a descriptive alias.
 
----
-
-## 14. Conditional Matching With `LEFT JOIN` — Orders Above 1000
-
-**Question:** Count orders above 1000 for each customer while keeping every customer in the result.
+## Q15. Count Orders Above 1000 for Every Customer
 
 ```sql
 SELECT
     c.name AS customer_name,
-    COUNT(o.order_id) AS orders_over_1000
+    COUNT(o.order_id) AS total_orders
 FROM customers AS c
 LEFT JOIN orders AS o
     ON c.customer_id = o.customer_id
@@ -330,107 +290,85 @@ LEFT JOIN orders AS o
 GROUP BY c.customer_id, c.name;
 ```
 
-### Logic
-- The customer-to-order match requires both a matching customer ID and `amount > 1000`.
-- The amount condition is in `ON`, not `WHERE`, so customers with no qualifying order remain.
-- `COUNT(o.order_id)` returns 0 when no order meets the condition.
+**Logic:** The condition `o.amount > 1000` is in `ON`. This matches only qualifying orders while preserving every customer.
 
-**Key lesson:** For a `LEFT JOIN`, a right-table condition in `WHERE` can remove unmatched left-side rows. Put the condition in `ON` when unmatched left-side rows must remain.
+If the condition were in `WHERE`, customers without qualifying orders could be removed from the result.
 
----
+## Q16. Find Customers With at Least Two Orders Using Multiple JOINs
 
-## 15. Common Mistakes
-
-### Mistake 1: Missing `GROUP BY`
-
-Incorrect:
 ```sql
-SELECT c.name, COUNT(o.order_id)
-FROM customers AS c
-LEFT JOIN orders AS o
-    ON c.customer_id = o.customer_id;
-```
-
-Correct:
-```sql
-SELECT c.name, COUNT(o.order_id)
+SELECT
+    c.name AS customer_name,
+    COUNT(o.order_id) AS total_orders
 FROM customers AS c
 LEFT JOIN orders AS o
     ON c.customer_id = o.customer_id
-GROUP BY c.customer_id, c.name;
+LEFT JOIN products AS p
+    ON p.product_id = o.product_id
+GROUP BY c.customer_id, c.name
+HAVING COUNT(o.order_id) >= 2;
 ```
 
-When selecting a non-aggregated column alongside an aggregate, group the non-aggregated columns.
+**Logic:**
+1. Join customers to orders.
+2. Join orders to products.
+3. Group rows by customer.
+4. Count orders.
+5. `HAVING` keeps customers with at least two orders.
 
-### Mistake 2: Using `WHERE` for aggregate conditions
+**Note:** The products JOIN is included for three-table practice. If only customer names and order counts are needed, it is unnecessary.
 
-Incorrect:
+## Q17. Show Every Product and Order Count, Sorted Highest to Lowest
+
 ```sql
-WHERE COUNT(o.order_id) >= 2
+SELECT
+    p.product_name,
+    COUNT(o.order_id) AS total_orders
+FROM products AS p
+LEFT JOIN orders AS o
+    ON p.product_id = o.product_id
+GROUP BY p.product_id, p.product_name
+ORDER BY total_orders DESC;
 ```
 
-Correct:
-```sql
-HAVING COUNT(o.order_id) >= 2
-```
-
-### Mistake 3: Using `COUNT(*)` for unmatched rows after `LEFT JOIN`
-
-If a customer has no order, `LEFT JOIN` still produces a row for that customer with `NULL` order columns. `COUNT(*)` counts that row as 1, while `COUNT(o.order_id)` returns 0.
-
-### Mistake 4: Starting from the wrong table
-
-- Need all customers? Start from `customers` and use `LEFT JOIN`.
-- Need all products? Start from `products` and use `LEFT JOIN`.
-- Need only records that match across tables? Use `INNER JOIN`.
-
-### Mistake 5: Joining tables unnecessarily
-
-If the output needs only customer name and order count, the `customers` and `orders` tables are sufficient. Join `products` only if product information or a product-related condition is needed.
-
-### Mistake 6: Incorrect `NULL` comparison
-
-Incorrect:
-```sql
-WHERE o.order_id = NULL
-```
-
-Correct:
-```sql
-WHERE o.order_id IS NULL
-```
-
-Use `IS NULL` / `IS NOT NULL` to test for `NULL`.
+**Logic:** Starting from products preserves products with no orders. `COUNT(o.order_id)` counts matching orders and `ORDER BY ... DESC` sorts highest to lowest.
 
 ---
 
-## 16. Quick JOIN Decision Guide
+## Key Concepts to Remember
 
-| Requirement | Recommended approach |
+| Concept | Meaning |
 |---|---|
-| Only matching records from both tables | `INNER JOIN` |
-| All customers, whether ordered or not | `customers LEFT JOIN orders` |
-| All products, whether ordered or not | `products LEFT JOIN orders` |
-| Customers who never ordered | `LEFT JOIN` + `WHERE o.order_id IS NULL` |
-| Count orders per customer | `COUNT(o.order_id)` + `GROUP BY` |
-| Filter groups by their count | `HAVING COUNT(...) ...` |
-| Replace a `NULL` total/average with 0 | `COALESCE(aggregate, 0)` |
-| Keep all left rows while matching only qualifying right rows | Put the right-table condition in `ON` |
+| `INNER JOIN` | Returns only matching rows from joined tables. |
+| `LEFT JOIN` | Keeps all rows from the left table, even without a right-side match. |
+| `ON` | Defines how rows match between tables. |
+| `WHERE` | Filters rows before grouping and aggregation. |
+| `GROUP BY` | Groups rows for calculations such as COUNT, SUM and AVG. |
+| `HAVING` | Filters groups after aggregation. |
+| `COUNT(column)` | Counts non-NULL values. |
+| `SUM(column)` | Adds non-NULL numeric values. |
+| `AVG(column)` | Averages non-NULL numeric values. |
+| `COALESCE(value, 0)` | Replaces NULL with zero. |
+| `ORDER BY ... DESC` | Sorts from highest to lowest. |
+| `IS NULL` | Checks whether a value is NULL. |
 
----
+## Common Mistakes
 
-## 17. Checklist Before Running a Multiple JOIN Query
+1. **Using `WHERE COUNT(...)`:** Use `HAVING COUNT(...)` for aggregate conditions.
+2. **Forgetting `GROUP BY`:** Group non-aggregated selected columns when using aggregate calculations.
+3. **Using `COUNT(*)` for unmatched LEFT JOIN rows:** `COUNT(*)` can count the preserved row as 1. Use `COUNT(o.order_id)` to get 0 when no order matches.
+4. **Starting from the wrong table:** Start from `customers` if all customers must appear; start from `products` if all products must appear.
+5. **Filtering a LEFT JOIN in `WHERE` accidentally:** A right-table condition in `WHERE` can remove unmatched left-side rows. Put the condition in `ON` when unmatched left-side rows must remain.
+6. **Comparing NULL with `=`:** Use `IS NULL`, not `= NULL`.
+7. **Joining tables unnecessarily:** Join tables needed for the output or filter, unless practising multiple JOINs is the goal.
 
-- [ ] Have I included every table needed for the requested output?
-- [ ] Does each `JOIN` have the correct `ON` condition?
-- [ ] Which table's rows must all be preserved?
-- [ ] Should this be `INNER JOIN` or `LEFT JOIN`?
-- [ ] If using aggregates, have I grouped by the non-aggregated selected columns?
-- [ ] Should the filter be in `WHERE`, `ON`, or `HAVING`?
-- [ ] Am I counting a real right-table key with `COUNT(column)` when unmatched rows should count as zero?
-- [ ] Are output aliases descriptive and accurate?
-- [ ] Does `ORDER BY` match the requested sort order?
+## Final Revision Checklist
 
-## Final Takeaway
-
-Multiple JOINs connect related data across tables. Correct results depend on choosing the right join type, matching rows through the correct keys, selecting the right starting table when all rows must be preserved, and applying `WHERE`, `GROUP BY`, `HAVING`, and aggregate functions in the correct roles.
+- [ ] Can I explain why each table is joined?
+- [ ] Is each `ON` condition using the correct key?
+- [ ] Do I need `INNER JOIN` or `LEFT JOIN`?
+- [ ] Which table's complete set of rows must be preserved?
+- [ ] If I use aggregates, have I added the correct `GROUP BY`?
+- [ ] Should my filter be in `WHERE`, `ON`, or `HAVING`?
+- [ ] Am I using `COUNT(right_table.id)` when unmatched rows should count as zero?
+- [ ] Are my column aliases clear and accurate?
